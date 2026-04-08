@@ -1,0 +1,33 @@
+exchange:
+  id: bybit
+  type: future
+  testnet: false
+  pairs:
+    - BTC/USDT:USDT
+    - ETH/USDT:USDT
+    - SOL/USDT:USDT
+    - AVAX/USDT:USDT
+    - DOGE/USDT:USDT
+    - LINK/USDT:USDT
+    - SUI/USDT:USDT
+    - WIF/USDT:USDT
+
+leverage:
+  milestones:
+    0: 3
+    500: 5
+    1000: 7
+    5000: 10
+
+snowball:
+  monthly_injection: 100
+  auto_compound: true
+  milestones: [100, 500, 1000, 5000, 10000]
+
+backtest:
+  fee_rate: 0.0006
+  slippage_rate: 0.0005
+  train_days: 90
+  test_days: 14
+  min_trades_per_fold: 30
+  initial_capital: 100

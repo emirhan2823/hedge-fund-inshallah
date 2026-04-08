@@ -1,0 +1,18 @@
+base_risk_pct: 0.02
+min_risk_pct: 0.005
+max_risk_pct: 0.03
+max_position_size_pct: 0.30
+max_concurrent: 3
+daily_loss_limit: 0.05
+weekly_loss_limit: 0.10
+max_drawdown: 0.15
+max_same_direction: 2
+
+# Circuit breaker
+consecutive_loss_reduce: 3
+consecutive_loss_min: 5
+consecutive_loss_halt: 7
+
+# Drawdown response
+drawdown_levels: [0.05, 0.10, 0.15]
+drawdown_multipliers: [0.50, 0.25, 0.0]

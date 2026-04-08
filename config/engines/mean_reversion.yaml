@@ -1,0 +1,12 @@
+enabled: true
+timeframe: "15m"
+confirmation_timeframe: "1h"
+rsi_oversold: 30.0
+rsi_overbought: 70.0
+rsi_exit: 50.0
+bb_period: 20
+bb_std: 2.0
+zscore_entry: -2.0
+hurst_threshold: 0.5
+active_regimes:
+  - RANGING_LOW_VOL

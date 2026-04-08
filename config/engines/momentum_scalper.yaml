@@ -1,0 +1,13 @@
+enabled: true
+timeframe: "5m"
+confirmation_timeframe: "15m"
+volume_mult: 2.0
+rsi_threshold: 60.0
+breakout_lookback: 20
+atr_stop_mult: 1.5
+rr_ratio: 1.5
+min_account_balance: 500.0
+active_regimes:
+  - TRENDING_LOW_VOL
+  - TRENDING_HIGH_VOL
+  - RANGING_LOW_VOL
