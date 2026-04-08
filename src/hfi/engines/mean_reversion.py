@@ -69,20 +69,23 @@ class MeanReversion:
         if features.hurst_exponent >= c.hurst_threshold:
             return None
 
+        # Score-based entry: at least 2 of 3 extremity signals
         # LONG setup: oversold
         long_rsi = features.rsi_14 < c.rsi_oversold
-        long_bb = features.bb_pct_b < 0.0
+        long_bb = features.bb_pct_b < 0.15
         long_zscore = features.zscore_close_20 < c.zscore_entry
+        long_score = int(long_rsi) + int(long_bb) + int(long_zscore)
 
         # SHORT setup: overbought
         short_rsi = features.rsi_14 > c.rsi_overbought
-        short_bb = features.bb_pct_b > 1.0
+        short_bb = features.bb_pct_b > 0.85
         short_zscore = features.zscore_close_20 > abs(c.zscore_entry)
+        short_score = int(short_rsi) + int(short_bb) + int(short_zscore)
 
         bias: str | None = None
-        if long_rsi and long_bb and long_zscore:
+        if long_score >= 2:
             bias = Bias.LONG
-        elif short_rsi and short_bb and short_zscore:
+        elif short_score >= 2:
             bias = Bias.SHORT
         else:
             return None
