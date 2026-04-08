@@ -1,7 +1,15 @@
-"""Pipeline runner — Data → Features → Regime → Engines → Risk → Sizing → Decision.
+"""Pipeline runner — Data → Features → Regime → Engines → Filters → Risk → Sizing → Decision.
 
-Orchestrates the full trading pipeline for a single symbol + timeframe tick.
+Orchestrates the full trading pipeline with multi-layer validation.
 Pattern from Argus: E:/argus/argus-core/src/argus/pipeline/runner.py
+
+Pipeline stages:
+  1. Regime detection (6-layer voting)
+  2. Engine signal generation
+  3. Filter chain validation (directional bias + signal quality)
+  4. Risk check (portfolio limits)
+  5. Position sizing
+  6. Decision
 """
 
 from __future__ import annotations
@@ -16,7 +24,10 @@ from hfi.engines.base import AbstractEngine
 from hfi.engines.mean_reversion import MeanReversion
 from hfi.engines.momentum_scalper import MomentumScalper
 from hfi.engines.trend_follower import TrendFollower
-from hfi.regime.detector import detect_regime
+from hfi.filters.chain import FilterChain
+from hfi.filters.directional_bias import DirectionalBiasFilter
+from hfi.filters.signal_quality import SignalQualityFilter
+from hfi.regime.voting import VotingRegimeClassifier
 from hfi.risk.manager import RiskManager
 from hfi.risk.sizing import SizingInput, compute_size
 
@@ -32,6 +43,7 @@ class PipelineDecision:
     sizing: SizingResult | None = None
     regime: RegimeState | None = None
     skip_reason: str = ""
+    filter_reasons: list[str] | None = None
 
 
 class Pipeline:
@@ -40,6 +52,9 @@ class Pipeline:
     def __init__(self, config: HFIConfig, risk_manager: RiskManager) -> None:
         self._config = config
         self._risk_manager = risk_manager
+
+        # Initialize 6-layer voting regime classifier
+        self._regime_classifier = VotingRegimeClassifier()
 
         # Initialize engines
         self._engines: list[AbstractEngine] = []
@@ -50,7 +65,18 @@ class Pipeline:
         if config.momentum_scalper.enabled:
             self._engines.append(MomentumScalper(config.momentum_scalper))
 
-        logger.info("Pipeline initialized with %d engines", len(self._engines))
+        # Initialize filter chain
+        self._filter_chain = FilterChain([
+            DirectionalBiasFilter(),     # Stage 1: block counter-trend
+            SignalQualityFilter(         # Stage 2: multi-factor quality
+                regime_classifier=self._regime_classifier,
+            ),
+        ])
+
+        logger.info(
+            "Pipeline initialized: %d engines, %d filters",
+            len(self._engines), len(self._filter_chain.stages),
+        )
 
     def run(
         self,
@@ -68,12 +94,13 @@ class Pipeline:
         5. Compute position size
         6. Return decision
         """
-        # 1. Detect regime
-        regime = detect_regime(features)
+        # 1. Detect regime (6-layer voting)
+        regime = self._regime_classifier.classify(features)
         logger.debug(
-            "Regime: %s (conf=%.2f, dir=%s, ATR_pctl=%.2f, ADX=%.1f)",
+            "Regime: %s (conf=%.2f, dir=%s, ATR_pctl=%.2f, ADX=%.1f, candles=%d)",
             regime.regime, regime.confidence, regime.direction,
             regime.atr_percentile, regime.adx_value,
+            self._regime_classifier.candles_in_regime,
         )
 
         # 2. Collect signals from all active engines
@@ -114,7 +141,22 @@ class Pipeline:
         # 3. Pick best signal (highest expected return * confidence)
         best = max(signals, key=lambda s: s.expected_return * s.confidence)
 
-        # 4. Risk check
+        # 4. Filter chain validation (directional bias + signal quality)
+        chain_result = self._filter_chain.evaluate(best, features, regime)
+        if not chain_result.passed:
+            return PipelineDecision(
+                action="skip", signal=best, regime=regime,
+                skip_reason=f"Filter rejected: {chain_result.reasons}",
+                filter_reasons=chain_result.reasons,
+            )
+
+        logger.info(
+            "Filters PASSED (%d/%d): conf %.2f → %.2f",
+            chain_result.stages_passed, chain_result.stages_total,
+            chain_result.original_confidence, chain_result.final_confidence,
+        )
+
+        # 5. Risk check
         can_trade, reason = self._risk_manager.check_can_trade(
             best, portfolio, open_positions,
         )
@@ -124,7 +166,7 @@ class Pipeline:
                 skip_reason=f"Risk blocked: {reason}",
             )
 
-        # 5. Compute position size
+        # 6. Compute position size
         sizing_input = SizingInput(
             balance=portfolio.balance_usd,
             signal=best,
@@ -143,7 +185,7 @@ class Pipeline:
                 skip_reason="Sizing returned None (halted)",
             )
 
-        # 6. Return decision
+        # 7. Return decision
         action = f"enter_{best.bias}"
         logger.info(
             "DECISION: %s %s $%.2f (leverage=%dx, SL=%.4f, TP=%.4f) by %s",
