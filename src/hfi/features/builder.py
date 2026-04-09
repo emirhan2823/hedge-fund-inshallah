@@ -185,6 +185,33 @@ def build_features_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def merge_microstructure(fv: FeatureVector, micro: "MicrostructureSnapshot") -> FeatureVector:
+    """Merge microstructure data into a FeatureVector.
+
+    Creates a new FeatureVector (frozen model) with microstructure fields populated.
+    """
+    from hfi.features.microstructure import MicrostructureSnapshot  # noqa: F401 — type guard
+
+    updates = {}
+    if micro.funding_rate is not None:
+        updates["funding_rate"] = micro.funding_rate
+    if micro.open_interest_change_pct is not None:
+        updates["open_interest_change_pct"] = micro.open_interest_change_pct
+    if micro.long_short_ratio is not None:
+        updates["long_short_ratio"] = micro.long_short_ratio
+    if micro.orderbook_imbalance is not None:
+        updates["orderbook_imbalance"] = micro.orderbook_imbalance
+    if micro.buy_sell_ratio is not None:
+        updates["buy_sell_ratio"] = micro.buy_sell_ratio
+    if micro.large_trade_pct is not None:
+        updates["large_trade_pct"] = micro.large_trade_pct
+
+    if not updates:
+        return fv
+
+    return fv.model_copy(update=updates)
+
+
 def _rolling_hurst(series: pd.Series, window: int = 50) -> pd.Series:
     """Simplified rolling Hurst exponent via rescaled range method."""
     def _hurst(x: np.ndarray) -> float:

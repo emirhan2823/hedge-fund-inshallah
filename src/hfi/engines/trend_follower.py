@@ -93,6 +93,16 @@ class TrendFollower:
         )
         reason += f" | ADX={features.adx_14:.1f} | MACD_hist={features.macd_hist:.4f}"
 
+        # Microstructure: OI confirmation (if available)
+        if features.open_interest_change_pct is not None:
+            if features.open_interest_change_pct > 0.05:
+                confidence += 0.05  # OI rising = trend participation growing
+            elif features.open_interest_change_pct < -0.05:
+                confidence -= 0.10  # OI declining = trend losing steam
+                if confidence < 0.3:
+                    return None  # Skip weak trend with declining OI
+            confidence = min(1.0, max(0.0, confidence))
+
         return EngineSignal(
             engine=self.name,
             symbol=features.symbol,

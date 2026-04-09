@@ -109,6 +109,18 @@ class MomentumScalper:
             f"ROC={features.roc_10:.2f}% | BB%B={features.bb_pct_b:.2f}"
         )
 
+        # Microstructure: orderbook imbalance confirmation (if available)
+        if features.orderbook_imbalance is not None:
+            if bias == Bias.LONG and features.orderbook_imbalance < -0.3:
+                return None  # Orderbook says selling pressure, skip long
+            elif bias == Bias.SHORT and features.orderbook_imbalance > 0.3:
+                return None  # Orderbook says buying pressure, skip short
+
+        # Microstructure: whale activity boost
+        if features.large_trade_pct is not None and features.large_trade_pct > 0.3:
+            confidence += 0.05  # Whales participating = signal stronger
+            confidence = min(1.0, confidence)
+
         return EngineSignal(
             engine=self.name,
             symbol=features.symbol,

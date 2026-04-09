@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from rich.console import Console
 from rich.table import Table
 
+from hfi.backtest.csv_export import create_run_dir, export_trades_csv, export_analysis_json
 from hfi.backtest.runner import run_backtest
 from hfi.backtest.validator import walk_forward_validate
 from hfi.core.config import load_config
@@ -28,7 +29,7 @@ console = Console()
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s: %(message)s")
 
 
-async def main(symbol: str, engine: str | None, config_dir: str) -> None:
+async def main(symbol: str, engine: str | None, config_dir: str, output_dir: str | None = None) -> None:
     config = load_config(config_dir)
     client = ExchangeClient(config.exchange)
     await client.connect()
@@ -59,7 +60,13 @@ async def main(symbol: str, engine: str | None, config_dir: str) -> None:
 
     for eng in engines:
         console.print(f"[bold]Running backtest: {eng}[/bold]")
-        result = run_backtest(df.copy(), config, eng)
+        result = run_backtest(df.copy(), config, eng, symbol=symbol)
+
+        # Export results
+        if result.total_trades > 0:
+            run_dir = create_run_dir(eng, symbol, Path(output_dir) if output_dir else Path("data/results"))
+            export_trades_csv(result, eng, symbol, run_dir)
+            export_analysis_json(result, eng, symbol, run_dir)
 
         color = "green" if result.total_return > 0 else "red"
         sharpe_color = "green" if result.sharpe_ratio > 1.0 else "yellow" if result.sharpe_ratio > 0 else "red"
@@ -93,6 +100,7 @@ if __name__ == "__main__":
     parser.add_argument("--symbol", default="BTC/USDT:USDT", help="Trading pair")
     parser.add_argument("--engine", default=None, help="Specific engine to test")
     parser.add_argument("--config", default="config", help="Config directory")
+    parser.add_argument("--output-dir", default=None, help="Base directory for result exports")
     args = parser.parse_args()
 
-    asyncio.run(main(args.symbol, args.engine, args.config))
+    asyncio.run(main(args.symbol, args.engine, args.config, args.output_dir))

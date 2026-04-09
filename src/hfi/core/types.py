@@ -66,6 +66,14 @@ class FeatureVector(HFIModel):
     # --- ATR percentile for regime ---
     atr_pctl: Optional[float] = None  # ATR percentile rank [0.0, 1.0]
 
+    # --- Microstructure (6) --- live-only, None in backtests
+    funding_rate: Optional[float] = None          # current funding rate (positive = longs pay)
+    open_interest_change_pct: Optional[float] = None  # OI change % vs previous
+    long_short_ratio: Optional[float] = None      # account L/S ratio
+    orderbook_imbalance: Optional[float] = None   # [-1,1] bid-ask volume imbalance
+    buy_sell_ratio: Optional[float] = None         # [0,1] recent trades buy fraction
+    large_trade_pct: Optional[float] = None        # [0,1] whale trade fraction
+
 
 class RegimeState(HFIModel):
     """Current market regime determination."""

@@ -46,6 +46,7 @@ def run_backtest(
     df: pd.DataFrame,
     config: HFIConfig,
     engine_name: str = "TREND_FOLLOWER",
+    symbol: str = "UNKNOWN",
 ) -> BacktestResult:
     """Run backtest on OHLCV DataFrame.
 
@@ -78,6 +79,8 @@ def run_backtest(
         fee_rate=bc.fee_rate,
         slippage_rate=bc.slippage_rate,
         leverage=config.leverage.get_leverage(bc.initial_capital),
+        engine_name=engine_name,
+        symbol=symbol,
     )
 
     return result
@@ -201,11 +204,14 @@ def _simulate_trades(
     fee_rate: float = 0.0006,
     slippage_rate: float = 0.0005,
     leverage: int = 3,
+    engine_name: str = "UNKNOWN",
+    symbol: str = "UNKNOWN",
 ) -> BacktestResult:
     """Simulate trades (long + short) and compute performance metrics."""
     capital = initial_capital
     equity_curve = [capital]
     trades: list[dict] = []
+    trade_counter = 0
     in_position = False
     entry_price = 0.0
     entry_idx = None
@@ -241,6 +247,18 @@ def _simulate_trades(
             else:
                 stop_price = entry_price * (1 + stop_dist)
                 tp_price = entry_price * (1 - stop_dist * 3)
+
+            # Capture indicator snapshots at entry
+            entry_indicators = {
+                "adx": float(df["adx_14"].iloc[i]) if "adx_14" in df.columns else 0.0,
+                "rsi": float(df["rsi_14"].iloc[i]) if "rsi_14" in df.columns else 50.0,
+                "macd_hist": float(df["macd_hist"].iloc[i]) if "macd_hist" in df.columns else 0.0,
+                "volume_ratio": float(df["volume_ratio"].iloc[i]) if "volume_ratio" in df.columns else 1.0,
+                "bb_pct_b": float(df["bb_pct_b"].iloc[i]) if "bb_pct_b" in df.columns else 0.5,
+                "zscore": float(df["zscore_close_20"].iloc[i]) if "zscore_close_20" in df.columns else 0.0,
+                "atr": float(df["atr_14"].iloc[i]) if "atr_14" in df.columns else 0.0,
+                "hurst": float(df["hurst_exponent"].iloc[i]) if "hurst_exponent" in df.columns else 0.5,
+            }
 
             fee = position_size * fee_rate
             capital -= fee
@@ -281,15 +299,41 @@ def _simulate_trades(
             fee = position_size * fee_rate
             capital += pnl - fee
 
+            # Determine exit reason
+            if hit_stop:
+                exit_reason = "stop_loss"
+            elif hit_tp:
+                exit_reason = "take_profit"
+            elif hit_exit_signal:
+                exit_reason = "signal_exit"
+            else:
+                exit_reason = "end_of_data"
+
+            trade_counter += 1
             trades.append({
-                "entry_price": entry_price,
-                "exit_price": exit_price,
+                "trade_id": f"{engine_name}_{symbol.replace('/', '').replace(':', '')}_{trade_counter:04d}",
+                "engine": engine_name,
+                "symbol": symbol,
                 "direction": "long" if trade_dir == 1 else "short",
-                "pnl": pnl - fee * 2,
-                "pnl_pct": pnl_pct,
-                "bars_held": i - entry_idx,
                 "entry_time": str(df.index[entry_idx]),
                 "exit_time": str(df.index[i]),
+                "entry_price": round(entry_price, 6),
+                "exit_price": round(exit_price, 6),
+                "stop_loss": round(stop_price, 6),
+                "take_profit": round(tp_price, 6),
+                "pnl_usd": round(pnl - fee * 2, 4),
+                "pnl_pct": round(pnl_pct, 6),
+                "fees_usd": round(fee * 2, 4),
+                "bars_held": i - entry_idx,
+                "exit_reason": exit_reason,
+                "adx_at_entry": round(entry_indicators["adx"], 2),
+                "rsi_at_entry": round(entry_indicators["rsi"], 2),
+                "volume_ratio_at_entry": round(entry_indicators["volume_ratio"], 2),
+                "macd_hist_at_entry": round(entry_indicators["macd_hist"], 6),
+                "bb_pct_b_at_entry": round(entry_indicators["bb_pct_b"], 4),
+                "zscore_at_entry": round(entry_indicators["zscore"], 4),
+                "atr_at_entry": round(entry_indicators["atr"], 4),
+                "hurst_at_entry": round(entry_indicators["hurst"], 4),
             })
 
             in_position = False
@@ -303,7 +347,7 @@ def _simulate_trades(
     if not trades:
         return BacktestResult(equity_curve=equity_curve)
 
-    pnls = [t["pnl"] for t in trades]
+    pnls = [t["pnl_usd"] for t in trades]
     wins = [p for p in pnls if p > 0]
     losses = [p for p in pnls if p <= 0]
 

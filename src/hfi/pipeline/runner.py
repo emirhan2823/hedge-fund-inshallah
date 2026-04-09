@@ -20,6 +20,8 @@ from typing import Any, Optional
 
 from hfi.core.config import HFIConfig
 from hfi.core.types import EngineSignal, FeatureVector, PortfolioState, RegimeState, SizingResult
+from hfi.features.microstructure import MicrostructureCollector
+from hfi.features.builder import merge_microstructure
 from hfi.engines.base import AbstractEngine
 from hfi.engines.mean_reversion import MeanReversion
 from hfi.engines.momentum_scalper import MomentumScalper
@@ -49,9 +51,10 @@ class PipelineDecision:
 class Pipeline:
     """Main trading pipeline orchestrator."""
 
-    def __init__(self, config: HFIConfig, risk_manager: RiskManager) -> None:
+    def __init__(self, config: HFIConfig, risk_manager: RiskManager, micro_collector: MicrostructureCollector | None = None) -> None:
         self._config = config
         self._risk_manager = risk_manager
+        self._micro_collector = micro_collector
 
         # Initialize 6-layer voting regime classifier
         self._regime_classifier = VotingRegimeClassifier()

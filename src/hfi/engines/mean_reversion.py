@@ -111,6 +111,20 @@ class MeanReversion:
             f"Z={features.zscore_close_20:.2f} | Hurst={features.hurst_exponent:.2f}"
         )
 
+        # Microstructure: funding rate contrarian edge (if available)
+        if features.funding_rate is not None:
+            abs_fr = abs(features.funding_rate)
+            if abs_fr > 0.001:  # extreme funding (>0.1%)
+                # Extreme funding = crowd overextended = MR edge stronger
+                confidence += 0.08
+            if bias == Bias.LONG and features.funding_rate > 0.0005:
+                # Going long while longs are crowded (positive funding) = risky
+                confidence -= 0.05
+            elif bias == Bias.SHORT and features.funding_rate < -0.0005:
+                # Going short while shorts are crowded = risky
+                confidence -= 0.05
+            confidence = min(1.0, max(0.0, confidence))
+
         return EngineSignal(
             engine=self.name,
             symbol=features.symbol,
