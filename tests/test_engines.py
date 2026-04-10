@@ -55,7 +55,7 @@ class TestTrendFollower:
         engine = TrendFollower()
         features = _make_features(
             ema_8=42000, ema_21=41500, ema_55=40000,
-            adx_14=30, macd_hist=50,
+            adx_14=35, macd_hist=50, rsi_14=55,  # ADX>32, RSI<60
         )
         regime = _make_regime(Regime.TRENDING_LOW_VOL)
         signal = engine.generate_signal(regime=regime, features=features, close_price=42000)
@@ -70,7 +70,7 @@ class TestTrendFollower:
         engine = TrendFollower()
         features = _make_features(
             ema_8=39000, ema_21=40000, ema_55=41000,
-            adx_14=30, macd_hist=-50,
+            adx_14=35, macd_hist=-50, rsi_14=30,  # ADX>32, RSI<35
         )
         regime = _make_regime(Regime.TRENDING_LOW_VOL)
         signal = engine.generate_signal(regime=regime, features=features, close_price=39000)

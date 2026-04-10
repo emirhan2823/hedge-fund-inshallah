@@ -56,20 +56,26 @@ class TrendFollower:
 
         c = self._config
 
+        # Volume gate: skip dead volume (no participation = fake trend)
+        if features.volume_ratio < 0.8:
+            return None
+
         # Check for LONG setup
         long_ema = features.ema_8 > features.ema_21 > features.ema_55
         long_adx = features.adx_14 > c.adx_threshold
         long_macd = features.macd_hist > 0
+        long_rsi_ok = features.rsi_14 < 60  # don't long into overbought
 
         # Check for SHORT setup
         short_ema = features.ema_8 < features.ema_21 < features.ema_55
         short_adx = features.adx_14 > c.adx_threshold
         short_macd = features.macd_hist < 0
+        short_rsi_ok = features.rsi_14 < 35  # only short when momentum is strong
 
         bias: str | None = None
-        if long_ema and long_adx and long_macd:
+        if long_ema and long_adx and long_macd and long_rsi_ok:
             bias = Bias.LONG
-        elif short_ema and short_adx and short_macd:
+        elif short_ema and short_adx and short_macd and short_rsi_ok:
             bias = Bias.SHORT
         else:
             return None

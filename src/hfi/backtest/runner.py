@@ -107,19 +107,26 @@ def _generate_signals(
 
     if engine_name == "TREND_FOLLOWER":
         tc = config.trend_follower
-        # LONG: EMA alignment + ADX + MACD
+        # Volume gate: skip dead volume
+        vol_ok = df["volume_ratio"] >= 0.8
+
+        # LONG: EMA alignment + ADX + MACD + RSI not overbought
         long_entry = (
+            vol_ok &
             (df["ema_8"] > df["ema_21"]) &
             (df["ema_21"] > df["ema_55"]) &
             (df["adx_14"] > tc.adx_threshold) &
-            (df["macd_hist"] > 0)
+            (df["macd_hist"] > 0) &
+            (df["rsi_14"] < 60)  # don't long into overbought
         )
-        # SHORT: reversed EMA alignment
+        # SHORT: reversed EMA + RSI confirms momentum
         short_entry = (
+            vol_ok &
             (df["ema_8"] < df["ema_21"]) &
             (df["ema_21"] < df["ema_55"]) &
             (df["adx_14"] > tc.adx_threshold) &
-            (df["macd_hist"] < 0)
+            (df["macd_hist"] < 0) &
+            (df["rsi_14"] < 35)  # only short with strong downward momentum
         )
         # Enter on crossover (long or short)
         entries = (

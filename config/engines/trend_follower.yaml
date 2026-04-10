@@ -4,7 +4,7 @@ confirmation_timeframe: "4h"
 ema_fast: 8
 ema_mid: 21
 ema_slow: 55
-adx_threshold: 25.0
+adx_threshold: 32.0
 atr_stop_mult: 3.0
 rr_ratio: 3.0
 active_regimes:
