@@ -72,6 +72,14 @@ def run_backtest(
         logger.warning("No entry signals generated for %s", engine_name)
         return BacktestResult()
 
+    # Get engine-specific ATR mult and R:R from config
+    atr_mult_map = {
+        "TREND_FOLLOWER": (config.trend_follower.atr_stop_mult, config.trend_follower.rr_ratio),
+        "MEAN_REVERSION": (2.5, 2.0),  # MR uses wider stops, modest TP
+        "MOMENTUM_SCALPER": (config.momentum_scalper.atr_stop_mult, config.momentum_scalper.rr_ratio),
+    }
+    atr_stop_mult, rr_ratio = atr_mult_map.get(engine_name, (2.0, 3.0))
+
     # Simulate trades
     result = _simulate_trades(
         df, entries, exits,
@@ -81,6 +89,8 @@ def run_backtest(
         leverage=config.leverage.get_leverage(bc.initial_capital),
         engine_name=engine_name,
         symbol=symbol,
+        atr_stop_mult=atr_stop_mult,
+        rr_ratio=rr_ratio,
     )
 
     return result
@@ -204,6 +214,8 @@ def _simulate_trades(
     fee_rate: float = 0.0006,
     slippage_rate: float = 0.0005,
     leverage: int = 3,
+    atr_stop_mult: float = 2.0,
+    rr_ratio: float = 3.0,
     engine_name: str = "UNKNOWN",
     symbol: str = "UNKNOWN",
 ) -> BacktestResult:
@@ -235,18 +247,18 @@ def _simulate_trades(
 
             risk_pct = 0.02
             atr_val = df["atr_14"].iloc[i] if "atr_14" in df.columns else entry_price * 0.02
-            stop_dist = atr_val * 2 / entry_price
+            stop_dist = atr_val * atr_stop_mult / entry_price
             position_size = min(
                 capital * risk_pct / max(stop_dist, 0.001),
                 capital * leverage * 0.30,
             )
-            # Calculate stop loss price
+            # Calculate stop loss and take profit prices
             if trade_dir == 1:
                 stop_price = entry_price * (1 - stop_dist)
-                tp_price = entry_price * (1 + stop_dist * 3)  # 3:1 R:R
+                tp_price = entry_price * (1 + stop_dist * rr_ratio)
             else:
                 stop_price = entry_price * (1 + stop_dist)
-                tp_price = entry_price * (1 - stop_dist * 3)
+                tp_price = entry_price * (1 - stop_dist * rr_ratio)
 
             # Capture indicator snapshots at entry
             entry_indicators = {

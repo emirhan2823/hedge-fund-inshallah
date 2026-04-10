@@ -5,7 +5,7 @@ ema_fast: 8
 ema_mid: 21
 ema_slow: 55
 adx_threshold: 25.0
-atr_stop_mult: 2.0
+atr_stop_mult: 3.0
 rr_ratio: 3.0
 active_regimes:
   - TRENDING_LOW_VOL

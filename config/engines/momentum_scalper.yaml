@@ -4,7 +4,7 @@ confirmation_timeframe: "15m"
 volume_mult: 1.8
 rsi_threshold: 55.0
 breakout_lookback: 20
-atr_stop_mult: 1.5
+atr_stop_mult: 3.0
 rr_ratio: 1.5
 min_account_balance: 500.0
 active_regimes:
