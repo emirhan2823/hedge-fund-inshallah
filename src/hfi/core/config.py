@@ -155,6 +155,11 @@ class HFIConfig(BaseModel):
     snowball: SnowballConfig = Field(default_factory=SnowballConfig)
     telegram: TelegramConfig = Field(default_factory=TelegramConfig)
     backtest: BacktestConfig = Field(default_factory=BacktestConfig)
+    engine_pairs: dict[str, list[str]] = Field(default_factory=lambda: {
+        "TREND_FOLLOWER": ["BTC/USDT:USDT", "ETH/USDT:USDT", "SOL/USDT:USDT"],
+        "MEAN_REVERSION": ["ETH/USDT:USDT", "SOL/USDT:USDT"],
+        "MOMENTUM_SCALPER": [],
+    })
 
 
 def load_config(config_dir: str | Path = "config") -> HFIConfig:

@@ -82,9 +82,13 @@ class PaperTrader:
         # Calculate amount in base currency
         amount = sizing.position_size_usd / fill_price
 
-        # Deduct entry fee
-        fee = sizing.position_size_usd * FEE_PCT
-        self._balance -= fee
+        # Validate minimum position size
+        if amount <= 0 or sizing.position_size_usd < 1.0:
+            logger.warning("Position too small: $%.2f (min $1.00)", sizing.position_size_usd)
+            return None
+
+        # Note: fees are handled in order_manager.close_position() (entry + exit combined)
+        # Do NOT deduct fees here to avoid double-charging
 
         # Create position
         pos_id = self._order_manager.generate_position_id()

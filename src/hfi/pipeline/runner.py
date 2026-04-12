@@ -59,6 +59,9 @@ class Pipeline:
         # Initialize 6-layer voting regime classifier
         self._regime_classifier = VotingRegimeClassifier()
 
+        # Engine-pair mapping
+        self._engine_pairs = config.engine_pairs
+
         # Initialize engines
         self._engines: list[AbstractEngine] = []
         if config.trend_follower.enabled:
@@ -108,8 +111,14 @@ class Pipeline:
 
         # 2. Collect signals from all active engines
         signals: list[EngineSignal] = []
+        symbol = features.symbol
         for engine in self._engines:
             if regime.regime not in engine.active_regimes:
+                continue
+
+            # Engine-pair check: skip if this engine shouldn't trade this symbol
+            allowed_pairs = self._engine_pairs.get(engine.name, None)
+            if allowed_pairs is not None and symbol not in allowed_pairs:
                 continue
 
             # Special handling for momentum scalper (needs balance)

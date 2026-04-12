@@ -1,4 +1,4 @@
-enabled: true
+enabled: false
 timeframe: "5m"
 confirmation_timeframe: "15m"
 volume_mult: 1.8

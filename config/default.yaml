@@ -6,11 +6,6 @@ exchange:
     - BTC/USDT:USDT
     - ETH/USDT:USDT
     - SOL/USDT:USDT
-    - AVAX/USDT:USDT
-    - DOGE/USDT:USDT
-    - LINK/USDT:USDT
-    - SUI/USDT:USDT
-    - WIF/USDT:USDT
 
 leverage:
   milestones:
@@ -31,3 +26,14 @@ backtest:
   test_days: 14
   min_trades_per_fold: 30
   initial_capital: 100
+
+# Engine-pair mapping (which engine trades which coins)
+engine_pairs:
+  TREND_FOLLOWER:
+    - BTC/USDT:USDT
+    - ETH/USDT:USDT
+    - SOL/USDT:USDT
+  MEAN_REVERSION:
+    - ETH/USDT:USDT
+    - SOL/USDT:USDT
+  MOMENTUM_SCALPER: []

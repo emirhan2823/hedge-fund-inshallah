@@ -108,7 +108,7 @@ def _render_milestones(balance: float, milestones: list[float]) -> None:
 
     progress_pct = min(1.0, balance / current_target)
 
-    milestone_text = " → ".join(
+    milestone_text = " > ".join(
         f"[bold green]${m:.0f}[/]" if balance >= m else f"${m:.0f}"
         for m in milestones
     )
